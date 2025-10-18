@@ -13,7 +13,7 @@ function App() {
             <Wand2 className="h-8 w-8 text-primary-600 mr-3" />
             <div>
               <h1 className="text-3xl font-bold text-gray-900">TikTok Genie</h1>
-              <p className="text-gray-600 mt-1">AI-powered image & voice processing</p>
+              <p className="text-gray-600 mt-1">AI-powered Reel Generator</p>
             </div>
           </div>
         </div>

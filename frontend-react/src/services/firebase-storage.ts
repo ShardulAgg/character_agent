@@ -1,9 +1,8 @@
 import { 
   ref, 
-  uploadBytesResumable, 
+  uploadBytes, 
   getDownloadURL, 
   deleteObject,
-  UploadTaskSnapshot 
 } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 
@@ -20,7 +19,7 @@ export interface FirebaseUploadResult {
 }
 
 export class FirebaseStorageService {
-  // Upload file to Firebase Storage
+  // Upload file to Firebase Storage (simplified to avoid CORS issues)
   static async uploadFile(
     file: File, 
     folder: 'images' | 'voices',
@@ -32,54 +31,57 @@ export class FirebaseStorageService {
     const filePath = `${folder}/${fileName}`;
     
     const storageRef = ref(storage, filePath);
-    const uploadTask = uploadBytesResumable(storageRef, file);
 
-    return new Promise((resolve, reject) => {
-      uploadTask.on(
-        'state_changed',
-        (snapshot: UploadTaskSnapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          
-          if (onProgress) {
-            onProgress({
-              progress,
-              state: snapshot.state === 'running' ? 'running' : 'paused'
-            });
-          }
-        },
-        (error) => {
-          console.error('Upload failed:', error);
-          if (onProgress) {
-            onProgress({
-              progress: 0,
-              state: 'error',
-              error: error.message
-            });
-          }
-          reject(error);
-        },
-        async () => {
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            
-            if (onProgress) {
-              onProgress({
-                progress: 100,
-                state: 'success'
-              });
-            }
+    try {
+      // Show initial progress
+      if (onProgress) {
+        onProgress({
+          progress: 0,
+          state: 'running'
+        });
+      }
 
-            resolve({
-              url: downloadURL,
-              path: filePath,
-              name: fileName
-            });
-          } catch (error) {
-            reject(error);
-          }
-        }
-      );
-    });
+      // Use uploadBytes instead of uploadBytesResumable for better CORS compatibility
+      const snapshot = await uploadBytes(storageRef, file);
+      
+      // Show 50% progress after upload
+      if (onProgress) {
+        onProgress({
+          progress: 50,
+          state: 'running'
+        });
+      }
+
+      // Get download URL
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      // Show completion
+      if (onProgress) {
+        onProgress({
+          progress: 100,
+          state: 'success'
+        });
+      }
+
+      return {
+        url: downloadURL,
+        path: filePath,
+        name: fileName
+      };
+
+    } catch (error: any) {
+      console.error('Firebase upload error:', error);
+      
+      if (onProgress) {
+        onProgress({
+          progress: 0,
+          state: 'error',
+          error: error.message || 'Upload failed'
+        });
+      }
+      
+      throw new Error(`Upload failed: ${error.message}`);
+    }
   }
 
   // Delete file from Firebase Storage
