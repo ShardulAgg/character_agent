@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, Image, Music } from 'lucide-react';
+import { X, Image, Music } from 'lucide-react';
 import { cn, formatFileSize, getFileType } from '../lib/utils';
 
 interface FileUploadProps {

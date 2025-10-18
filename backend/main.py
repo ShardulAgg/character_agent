@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import os
 from typing import List
 import aiofiles
@@ -14,6 +15,7 @@ from google import genai
 from google.genai import types
 from PIL import Image
 from io import BytesIO
+import tempfile
 
 load_dotenv()
 
@@ -27,6 +29,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Pydantic models for Firebase requests
+class ProcessImageRequest(BaseModel):
+    firebase_url: str
+    filename: str
+    num_variations: int = 5
+
+class ProcessVoiceRequest(BaseModel):
+    firebase_url: str
+    filename: str
+    text: str = "Hello, this is a voice signature"
+
 # Set API keys
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 NANOBANANA_API_KEY = os.getenv("NANOBANANA_API_KEY")
@@ -39,6 +52,15 @@ if ELEVENLABS_API_KEY:
 os.makedirs("uploads/images", exist_ok=True)
 os.makedirs("uploads/voices", exist_ok=True)
 os.makedirs("outputs", exist_ok=True)
+
+async def download_file_from_url(url: str) -> bytes:
+    """Download file from URL and return bytes"""
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        return response.content
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to download file from URL: {str(e)}")
 
 @app.get("/")
 async def root():
@@ -176,6 +198,104 @@ async def generate_voice_signature(filename: str, text: str = "Hello, this is a 
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating voice signature: {str(e)}")
+
+@app.post("/process-image-firebase")
+async def process_image_firebase(request: ProcessImageRequest):
+    """Process image from Firebase Storage URL"""
+    try:
+        # Download image from Firebase URL
+        image_data = await download_file_from_url(request.firebase_url)
+        
+        # Save to temporary file for processing
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+            temp_file.write(image_data)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Process with Gemini API (if available)
+            client = genai.Client()
+            
+            # Load image
+            image = Image.open(temp_file_path)
+            
+            prompt = (
+                f"Generate {request.num_variations} different angle variations of this image. "
+                "Create variations with different perspectives like front, left, right, back, and top views. "
+                "Maintain the style and content while changing the viewing angle."
+            )
+            
+            response = client.models.generate_content(
+                model="gemini-2.5-flash-image",
+                contents=[prompt, image]
+            )
+            
+            variations = []
+            angles = ["front", "left", "right", "back", "top"]
+            
+            for i in range(min(request.num_variations, len(angles))):
+                variations.append({
+                    "angle": angles[i],
+                    "status": "generated"
+                })
+            
+            # Save response for debugging
+            output_path = f"outputs/gemini_response_{request.filename}.json"
+            with open(output_path, "w") as f:
+                import json
+                json.dump(response.to_dict(), f, indent=2)
+            
+            return {
+                "variations": {"images": variations},
+                "status": "success",
+                "firebase_url": request.firebase_url,
+                "response_saved": output_path
+            }
+            
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_file_path)
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing image from Firebase: {str(e)}")
+
+@app.post("/process-voice-firebase")
+async def process_voice_firebase(request: ProcessVoiceRequest):
+    """Process voice from Firebase Storage URL"""
+    try:
+        # Download voice file from Firebase URL
+        voice_data = await download_file_from_url(request.firebase_url)
+        
+        # Save to temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_file:
+            temp_file.write(voice_data)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Generate voice signature using Eleven Labs
+            audio = generate(
+                text=request.text,
+                voice="Adam",  # Default voice, can be customized
+                model="eleven_monolingual_v1"
+            )
+            
+            # Save generated audio
+            output_path = f"outputs/voice_signature_firebase_{request.filename}"
+            with open(output_path, "wb") as f:
+                f.write(audio)
+            
+            return {
+                "signature_path": output_path,
+                "original_firebase_url": request.firebase_url,
+                "text_used": request.text,
+                "status": "success"
+            }
+            
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_file_path)
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing voice from Firebase: {str(e)}")
 
 @app.get("/health")
 async def health_check():

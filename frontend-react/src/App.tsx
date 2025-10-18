@@ -1,4 +1,3 @@
-import React from 'react';
 import { ImageProcessor } from './components/ImageProcessor';
 import { VoiceProcessor } from './components/VoiceProcessor';
 import { SystemStatus } from './components/SystemStatus';
