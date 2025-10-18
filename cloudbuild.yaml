@@ -1,0 +1,81 @@
+steps:
+  # Build backend
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/tiktok-genie-backend:$COMMIT_SHA', './backend']
+    dir: '.'
+  
+  # Build Streamlit frontend  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/tiktok-genie-frontend-streamlit:$COMMIT_SHA', './frontend']
+    dir: '.'
+  
+  # Build React frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/tiktok-genie-frontend-react:$COMMIT_SHA', './frontend-react']
+    dir: '.'
+  
+  # Push images
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/tiktok-genie-backend:$COMMIT_SHA']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/tiktok-genie-frontend-streamlit:$COMMIT_SHA']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/tiktok-genie-frontend-react:$COMMIT_SHA']
+  
+  # Deploy backend to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'tiktok-genie-backend'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/tiktok-genie-backend:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8000'
+  
+  # Deploy Streamlit frontend to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'tiktok-genie-frontend-streamlit'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/tiktok-genie-frontend-streamlit:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8501'
+
+  # Deploy React frontend to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'tiktok-genie-frontend-react'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/tiktok-genie-frontend-react:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '80'
+
+images:
+  - 'gcr.io/$PROJECT_ID/tiktok-genie-backend:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/tiktok-genie-frontend-streamlit:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/tiktok-genie-frontend-react:$COMMIT_SHA'
