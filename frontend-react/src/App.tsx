@@ -2,6 +2,7 @@ import { ImageProcessor } from './components/ImageProcessor';
 import { VoiceProcessor } from './components/VoiceProcessor';
 import { SystemStatus } from './components/SystemStatus';
 import { UserProfile } from './components/UserProfile';
+import { BatchProcessor } from './components/BatchProcessor';
 import { AuthComponent } from './components/AuthComponent';
 import { AuthProvider } from './contexts/AuthContext';
 import { Wand2 } from 'lucide-react';
@@ -53,6 +54,10 @@ function App() {
               <UserProfile userEmail={currentUserEmail} />
             )}
             <SystemStatus />
+          </div>
+
+          <div className="mb-8">
+            <BatchProcessor />
           </div>
         </main>
 
