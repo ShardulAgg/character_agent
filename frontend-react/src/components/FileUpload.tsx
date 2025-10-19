@@ -66,13 +66,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           className={cn(
             'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
             isDragActive
-              ? 'border-primary-500 bg-primary-50'
-              : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
+              ? 'border-gray-400 bg-gray-50'
+              : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
           )}
         >
           <input {...getInputProps()} />
           <Icon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <p className="text-lg font-medium text-gray-900 mb-2">
+          <p className="text-base font-medium text-gray-900 mb-2">
             {isDragActive
               ? `Drop your ${type} file here`
               : `Upload ${type} file`}
@@ -85,10 +85,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           </p>
         </div>
       ) : (
-        <div className="border-2 border-gray-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
+        <div className="border border-gray-200 rounded-lg p-4 bg-white">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <Icon className="h-8 w-8 text-primary-500" />
+              <Icon className="h-8 w-8 text-gray-700" />
               <div>
                 <p className="font-medium text-gray-900">{selectedFile.name}</p>
                 <p className="text-sm text-gray-500">
@@ -98,22 +98,22 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             </div>
             <button
               onClick={removeFile}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-1 hover:bg-gray-100 rounded-md transition-colors"
             >
               <X className="h-5 w-5 text-gray-500" />
             </button>
           </div>
-          
+
           {type === 'image' && (
             <div className="mt-4">
               <img
                 src={URL.createObjectURL(selectedFile)}
                 alt="Preview"
-                className="max-w-full h-48 object-contain rounded-lg"
+                className="max-w-full h-48 object-contain rounded-md mx-auto"
               />
             </div>
           )}
-          
+
           {type === 'audio' && (
             <div className="mt-4">
               <audio controls className="w-full">
@@ -124,9 +124,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           )}
         </div>
       )}
-      
+
       {error && (
-        <p className="mt-2 text-sm text-red-600">{error}</p>
+        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
       )}
     </div>
   );

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test -d /mnt/c/cloutfarm/b2c/character_agent/frontend-react/node_modules/@vitejs/plugin-react/dist)",
+      "Bash(rm -rf node_modules)",
+      "Bash(rm -f package-lock.json)",
+      "Bash(mkdir -p /mnt/c/cloutfarm/b2c/character_agent/frontend-react/src/lib)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

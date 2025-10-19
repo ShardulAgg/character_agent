@@ -82,11 +82,15 @@ export const VoiceProcessor: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <div className="flex items-center mb-6">
-        <Music className="h-6 w-6 text-primary-600 mr-3" />
-        <h2 className="text-xl font-semibold text-gray-900">Voice Processing</h2>
-        <Cloud className="h-5 w-5 text-blue-500 ml-2" />
+    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <Music className="h-5 w-5 text-gray-900" />
+          <h2 className="text-lg font-bold text-gray-900">Voice</h2>
+        </div>
+        <p className="text-sm text-gray-600">
+          Upload a voice recording (10-30 seconds)
+        </p>
       </div>
 
       <div className="space-y-6">
@@ -136,39 +140,23 @@ export const VoiceProcessor: React.FC = () => {
 
         {firebaseResult && (
           <div className="space-y-4">
-            <div className="bg-green-50 p-4 rounded-lg">
+            <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
               <div className="flex items-center mb-2">
-                <Cloud className="h-5 w-5 text-green-600 mr-2" />
+                <Cloud className="h-4 w-4 text-green-600 mr-2" />
                 <span className="font-medium text-green-800">Uploaded to Firebase</span>
               </div>
-              <div className="text-sm space-y-1">
+              <div className="text-sm space-y-1 text-gray-600">
                 <div>
-                  <span className="font-medium text-gray-700">File:</span>
-                  <span className="text-gray-600 ml-2">{firebaseResult.name}</span>
+                  <span className="font-medium">File:</span> {firebaseResult.name}
                 </div>
                 <div>
-                  <span className="font-medium text-gray-700">Storage Path:</span>
-                  <span className="text-gray-600 ml-2 font-mono text-xs">{firebaseResult.path}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">URL:</span>
-                  <a 
-                    href={firebaseResult.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 ml-2 text-xs break-all"
-                  >
-                    {firebaseResult.url.length > 50 
-                      ? `${firebaseResult.url.substring(0, 50)}...` 
-                      : firebaseResult.url
-                    }
-                  </a>
+                  <span className="font-medium">Path:</span> <span className="font-mono text-xs">{firebaseResult.path}</span>
                 </div>
               </div>
             </div>
 
             <div>
-              <label htmlFor="voiceText" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="voiceText" className="block text-sm font-medium text-gray-700 mb-1">
                 Text for Voice Signature
               </label>
               <textarea
@@ -176,7 +164,7 @@ export const VoiceProcessor: React.FC = () => {
                 rows={3}
                 value={voiceText}
                 onChange={(e) => setVoiceText(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
                 placeholder="Enter the text to generate voice signature..."
               />
             </div>
@@ -200,26 +188,20 @@ export const VoiceProcessor: React.FC = () => {
         )}
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
-            ❌ {error}
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-md">
+            {error}
           </div>
         )}
 
         {signatureResult && (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Voice Signature Generated</h3>
-            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-gray-700">Original Firebase URL:</span>
-                  <p className="text-gray-600 break-all font-mono text-xs">{firebaseResult?.url}</p>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Signature Path:</span>
-                  <p className="text-gray-600">{signatureResult.signature_path}</p>
-                </div>
+            <h3 className="text-base font-semibold text-gray-900">Voice Signature Generated</h3>
+            <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg space-y-3">
+              <div className="text-sm">
+                <span className="font-medium text-gray-700">Signature Path:</span>
+                <p className="text-gray-600">{signatureResult.signature_path}</p>
               </div>
-              <div>
+              <div className="text-sm">
                 <span className="font-medium text-gray-700">Text Used:</span>
                 <p className="text-gray-600 italic">"{signatureResult.text_used}"</p>
               </div>

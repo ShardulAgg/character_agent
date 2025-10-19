@@ -51,10 +51,10 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({ className }) => {
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg p-6 ${className}`}>
+    <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
       <div className="flex items-center mb-6">
-        <Activity className="h-6 w-6 text-primary-600 mr-3" />
-        <h2 className="text-xl font-semibold text-gray-900">System Status</h2>
+        <Activity className="h-5 w-5 text-gray-700 mr-2" />
+        <h2 className="text-lg font-semibold text-gray-900">System Status</h2>
       </div>
 
       <div className="space-y-4">
@@ -66,7 +66,7 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({ className }) => {
           <button
             onClick={checkHealth}
             disabled={healthStatus === 'loading'}
-            className="px-3 py-1 text-sm bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200 transition-colors disabled:opacity-50"
+            className="px-3 py-2 text-sm bg-gray-100 text-gray-900 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
           >
             Refresh
           </button>
@@ -81,13 +81,13 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({ className }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
           <div>
             <div className="text-sm font-medium text-gray-700">Backend URL</div>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 font-mono break-all">
               {import.meta.env.VITE_API_URL || 'http://localhost:8000'}
             </div>
           </div>
           <div>
             <div className="text-sm font-medium text-gray-700">Environment</div>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 uppercase">
               {import.meta.env.MODE}
             </div>
           </div>
