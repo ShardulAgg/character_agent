@@ -1,4 +1,4 @@
-import axios from 'axios';
+simport axios from 'axios';
 import {
   UploadResponse,
   ImageVariationsResponse,
@@ -60,13 +60,46 @@ export const apiService = {
     return response.data;
   },
 
+  // Process image with metadata (new endpoint - uses Firestore)
+  async processImageWithMetadata(
+    user_email: string,
+    image_ids: string[],
+    num_variations: number = 5
+  ): Promise<ImageVariationsResponse> {
+    const response = await api.post<ImageVariationsResponse>('/process-image-with-metadata', {
+      user_email,
+      image_ids,
+      num_variations
+    });
+    return response.data;
+  },
+
   // Generate image variations (legacy)
   async generateImageVariations(
     filename: string,
     numVariations: number = 5
   ): Promise<ImageVariationsResponse> {
+    console.log(`Calling /generate-image-variations with filename: ${filename}`);
     const response = await api.post<ImageVariationsResponse>(
       '/generate-image-variations',
+      null,
+      {
+        params: {
+          filename,
+          num_variations: numVariations,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async generateImageVariationsGemini(
+    filename: string,
+    numVariations: number = 5
+  ): Promise<ImageVariationsResponse> {
+    console.log(`Calling /generate-image-variations-gemini with filename: ${filename}`);
+    const response = await api.post<ImageVariationsResponse>(
+      '/generate-image-variations-gemini',
       null,
       {
         params: {
