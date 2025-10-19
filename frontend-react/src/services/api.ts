@@ -4,6 +4,8 @@ import {
   ImageVariationsResponse,
   VoiceSignatureResponse,
   HealthResponse,
+  ProcessImageRequest,
+  ProcessVoiceRequest,
 } from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -20,7 +22,7 @@ export const apiService = {
     return response.data;
   },
 
-  // Upload image
+  // Upload image (legacy - for backward compatibility)
   async uploadImage(file: File): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
@@ -33,7 +35,7 @@ export const apiService = {
     return response.data;
   },
 
-  // Upload voice
+  // Upload voice (legacy - for backward compatibility)
   async uploadVoice(file: File): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
@@ -46,7 +48,19 @@ export const apiService = {
     return response.data;
   },
 
-  // Generate image variations
+  // Process image from Firebase URL
+  async processImageFromFirebase(request: ProcessImageRequest): Promise<ImageVariationsResponse> {
+    const response = await api.post<ImageVariationsResponse>('/process-image-firebase', request);
+    return response.data;
+  },
+
+  // Process voice from Firebase URL
+  async processVoiceFromFirebase(request: ProcessVoiceRequest): Promise<VoiceSignatureResponse> {
+    const response = await api.post<VoiceSignatureResponse>('/process-voice-firebase', request);
+    return response.data;
+  },
+
+  // Generate image variations (legacy)
   async generateImageVariations(
     filename: string,
     numVariations: number = 5
@@ -83,7 +97,7 @@ export const apiService = {
     return response.data;
   },
 
-  // Generate voice signature
+  // Generate voice signature (legacy)
   async generateVoiceSignature(
     filename: string,
     text: string = 'Hello, this is a voice signature'

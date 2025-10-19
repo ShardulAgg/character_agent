@@ -3,6 +3,12 @@ export interface UploadResponse {
   path: string;
 }
 
+export interface FirebaseUploadResponse {
+  url: string;
+  path: string;
+  name: string;
+}
+
 export interface ImageVariation {
   angle: string;
   url?: string;
@@ -25,4 +31,16 @@ export interface VoiceSignatureResponse {
 
 export interface HealthResponse {
   status: string;
+}
+
+export interface ProcessImageRequest {
+  firebase_url: string;
+  filename: string;
+  num_variations?: number;
+}
+
+export interface ProcessVoiceRequest {
+  firebase_url: string;
+  filename: string;
+  text: string;
 }
