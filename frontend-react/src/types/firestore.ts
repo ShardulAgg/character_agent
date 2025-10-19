@@ -13,6 +13,9 @@ export interface EmailUser {
   imageIds: string[]; // Array of image document IDs
   voiceIds: string[]; // Array of voice document IDs
   projectIds: string[]; // Array of project document IDs
+  contentOpinion?: string; // User's content/opinion style
+  speakingStyle?: string; // User's speaking/writing style
+  guardrails?: string; // User's content guardrails
   createdAt: Date;
   updatedAt: Date;
   lastActive?: Date;
@@ -34,6 +37,7 @@ export interface BaseMediaItem {
 
 export interface ImageMetadata extends BaseMediaItem {
   type: 'image';
+  imageType?: 'face' | 'torso';
   width?: number;
   height?: number;
   variations?: ImageVariationMetadata[];

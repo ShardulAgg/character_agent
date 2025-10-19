@@ -80,10 +80,10 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({ className }) => {
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg p-6 ${className}`}>
+    <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
       <div className="flex items-center mb-6">
-        <Activity className="h-6 w-6 text-primary-600 mr-3" />
-        <h2 className="text-xl font-semibold text-gray-900">System Status</h2>
+        <Activity className="h-5 w-5 text-gray-700 mr-2" />
+        <h2 className="text-lg font-semibold text-gray-900">System Status</h2>
       </div>
 
       <div className="space-y-4">
@@ -127,7 +127,7 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({ className }) => {
                   <ul className="list-disc list-inside ml-2 space-y-1 mt-1">
                     <li>Enable Firestore in Firebase Console</li>
                     <li>Update Firestore security rules to allow reads/writes</li>
-                    <li>Verify project ID: <code className="font-mono bg-red-100 px-1 rounded">tiktok-genie</code></li>
+                    <li>Verify project ID: <code className="font-mono bg-red-100 px-1 rounded">{import.meta.env.VITE_FIREBASE_PROJECT_ID || 'Not configured'}</code></li>
                     <li>Check network connectivity</li>
                   </ul>
                 </div>
@@ -153,10 +153,10 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({ className }) => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
           <div>
             <div className="text-sm font-medium text-gray-700">Backend URL</div>
-            <div className="text-sm text-gray-600 font-mono">
+            <div className="text-sm text-gray-600 font-mono break-all">
               {import.meta.env.VITE_API_URL || 'http://localhost:8000'}
             </div>
           </div>
@@ -164,6 +164,12 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({ className }) => {
             <div className="text-sm font-medium text-gray-700">Firebase Project</div>
             <div className="text-sm text-gray-600 font-mono">
               {import.meta.env.VITE_FIREBASE_PROJECT_ID || 'Not configured'}
+            </div>
+          </div>
+          <div>
+            <div className="text-sm font-medium text-gray-700">Environment</div>
+            <div className="text-sm text-gray-600 uppercase">
+              {import.meta.env.MODE}
             </div>
           </div>
         </div>

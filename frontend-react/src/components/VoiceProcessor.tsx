@@ -37,12 +37,12 @@ export const VoiceProcessor: React.FC<VoiceProcessorProps> = ({ onEmailUpdate })
 
   const handleUploadClick = () => {
     if (!selectedFile) return;
-    
+
     if (!userEmail) {
       setShowEmailDialog(true);
       return;
     }
-    
+
     handleFirebaseUpload();
   };
 
@@ -75,7 +75,7 @@ export const VoiceProcessor: React.FC<VoiceProcessorProps> = ({ onEmailUpdate })
         'voices',
         (progress) => setUploadProgress(progress)
       );
-      
+
       setFirebaseResult(storageResult);
       setUploadProgress(null);
 
@@ -128,7 +128,7 @@ export const VoiceProcessor: React.FC<VoiceProcessorProps> = ({ onEmailUpdate })
         filename: firebaseResult.name,
         text: voiceText,
       });
-      
+
       setSignatureResult(response);
 
       // Update metadata with results
@@ -146,7 +146,7 @@ export const VoiceProcessor: React.FC<VoiceProcessorProps> = ({ onEmailUpdate })
     } catch (err) {
       setError('Failed to generate voice signature. Please try again.');
       console.error('Generation error:', err);
-      
+
       // Update error status in Firestore
       if (voiceMetadata) {
         await FirestoreService.updateVoiceMetadata(voiceMetadata.id, {
@@ -165,21 +165,26 @@ export const VoiceProcessor: React.FC<VoiceProcessorProps> = ({ onEmailUpdate })
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex items-center mb-6">
-          <Music className="h-6 w-6 text-primary-600 mr-3" />
-          <h2 className="text-xl font-semibold text-gray-900">Voice Processing</h2>
-          <Cloud className="h-5 w-5 text-blue-500 ml-2" />
-          <Database className="h-5 w-5 text-green-500 ml-1" />
+      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Music className="h-5 w-5 text-gray-900" />
+            <h2 className="text-lg font-bold text-gray-900">Voice</h2>
+            <Cloud className="h-4 w-4 text-blue-500 ml-auto" />
+            <Database className="h-4 w-4 text-green-500" />
+          </div>
+          <p className="text-sm text-gray-600">
+            Upload a voice recording (10-30 seconds)
+          </p>
         </div>
 
         {userEmail && (
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="text-sm text-blue-800">
               <span className="font-medium">Email:</span> {userEmail}
               <button
                 onClick={() => setUserEmail('')}
-                className="ml-2 text-blue-600 hover:text-blue-800 underline"
+                className="ml-2 text-blue-600 hover:text-blue-800 underline text-xs"
               >
                 Change
               </button>
@@ -187,13 +192,13 @@ export const VoiceProcessor: React.FC<VoiceProcessorProps> = ({ onEmailUpdate })
           </div>
         )}
 
-        <div className="space-y-6">{' '}
+        <div className="space-y-6">
           <FileUpload
             accept={audioAccept}
             onFileSelect={handleFileSelect}
             selectedFile={selectedFile}
             type="audio"
-            maxSize={50 * 1024 * 1024} // 50MB for audio files
+            maxSize={50 * 1024 * 1024}
           />
 
           {selectedFile && !firebaseResult && (
@@ -215,8 +220,8 @@ export const VoiceProcessor: React.FC<VoiceProcessorProps> = ({ onEmailUpdate })
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
                       className={`h-2 rounded-full transition-all duration-300 ${
-                        uploadProgress.state === 'error' 
-                          ? 'bg-red-500' 
+                        uploadProgress.state === 'error'
+                          ? 'bg-red-500'
                           : uploadProgress.state === 'success'
                           ? 'bg-green-500'
                           : 'bg-blue-500'
@@ -234,27 +239,24 @@ export const VoiceProcessor: React.FC<VoiceProcessorProps> = ({ onEmailUpdate })
 
           {firebaseResult && voiceMetadata && (
             <div className="space-y-4">
-              <div className="bg-green-50 p-4 rounded-lg">
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
                 <div className="flex items-center mb-2">
-                  <Cloud className="h-5 w-5 text-green-600 mr-2" />
-                  <Database className="h-5 w-5 text-green-600 mr-2" />
+                  <Cloud className="h-4 w-4 text-green-600 mr-2" />
+                  <Database className="h-4 w-4 text-green-600 mr-2" />
                   <span className="font-medium text-green-800">Uploaded & Saved</span>
                 </div>
-                <div className="text-sm space-y-1">
+                <div className="text-sm space-y-1 text-gray-600">
                   <div>
-                    <span className="font-medium text-gray-700">File:</span>
-                    <span className="text-gray-600 ml-2">{firebaseResult.name}</span>
+                    <span className="font-medium">File:</span> {firebaseResult.name}
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Email:</span>
-                    <span className="text-gray-600 ml-2">{userEmail}</span>
+                    <span className="font-medium">Email:</span> {userEmail}
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Metadata ID:</span>
-                    <span className="text-gray-600 ml-2 font-mono text-xs">{voiceMetadata.id}</span>
+                    <span className="font-medium">Metadata ID:</span> <span className="font-mono text-xs">{voiceMetadata.id}</span>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Status:</span>
+                    <span className="font-medium">Status:</span>
                     <span className={`ml-2 px-2 py-1 rounded text-xs ${
                       voiceMetadata.processingStatus === 'completed' ? 'bg-green-100 text-green-800' :
                       voiceMetadata.processingStatus === 'processing' ? 'bg-yellow-100 text-yellow-800' :
@@ -276,11 +278,11 @@ export const VoiceProcessor: React.FC<VoiceProcessorProps> = ({ onEmailUpdate })
                   rows={3}
                   value={voiceText}
                   onChange={(e) => setVoiceText(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
                   placeholder="Enter the text to generate voice signature..."
                 />
               </div>
-              
+
               <Button
                 onClick={handleGenerateSignature}
                 loading={generating}
@@ -300,26 +302,20 @@ export const VoiceProcessor: React.FC<VoiceProcessorProps> = ({ onEmailUpdate })
           )}
 
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
-              ❌ {error}
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-md">
+              {error}
             </div>
           )}
 
           {signatureResult && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Voice Signature Generated</h3>
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-gray-700">Original Firebase URL:</span>
-                    <p className="text-gray-600 break-all font-mono text-xs">{firebaseResult?.url}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Signature Path:</span>
-                    <p className="text-gray-600">{signatureResult.signature_path}</p>
-                  </div>
+              <h3 className="text-base font-semibold text-gray-900">Voice Signature Generated</h3>
+              <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg space-y-3">
+                <div className="text-sm">
+                  <span className="font-medium text-gray-700">Signature Path:</span>
+                  <p className="text-gray-600">{signatureResult.signature_path}</p>
                 </div>
-                <div>
+                <div className="text-sm">
                   <span className="font-medium text-gray-700">Text Used:</span>
                   <p className="text-gray-600 italic">"{signatureResult.text_used}"</p>
                 </div>

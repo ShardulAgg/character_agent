@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test -d /mnt/c/cloutfarm/b2c/character_agent/frontend-react/node_modules/@vitejs/plugin-react/dist)",
+      "Bash(rm -rf node_modules)",
+      "Bash(rm -f package-lock.json)",
+      "Bash(mkdir -p /mnt/c/cloutfarm/b2c/character_agent/frontend-react/src/lib)",
+      "Bash(rm -rf frontend-react/node_modules)",
+      "Bash(git add frontend-react/node_modules)",
+      "Bash(git add frontend-react/src/App.tsx)",
+      "Bash(git add frontend-react/src/components/ImageProcessor.tsx)",
+      "Bash(git add frontend-react/src/components/SystemStatus.tsx)",
+      "Bash(git add frontend-react/src/components/VoiceProcessor.tsx)",
+      "Bash(cat /mnt/c/cloutfarm/b2c/character_agent/firestore.rules)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

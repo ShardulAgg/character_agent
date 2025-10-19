@@ -103,17 +103,33 @@ export class FirestoreService {
     }
   }
 
+  static async updateEmailUser(email: string, updates: Partial<EmailUser>): Promise<void> {
+    try {
+      const emailDocId = email.replace(/[@.]/g, '_');
+      const userRef = doc(db, COLLECTIONS.EMAIL_USERS, emailDocId);
+
+      await setDoc(userRef, {
+        ...updates,
+        updatedAt: serverTimestamp(),
+        lastActive: serverTimestamp(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
+  }
+
   static async addImageToUser(email: string, imageId: string): Promise<void> {
     try {
       const emailDocId = email.replace(/[@.]/g, '_');
       const userRef = doc(db, COLLECTIONS.EMAIL_USERS, emailDocId);
-      
+
       // Get current user data
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const userData = userSnap.data() as EmailUser;
         const updatedImageIds = [...(userData.imageIds || []), imageId];
-        
+
         await updateDoc(userRef, {
           imageIds: updatedImageIds,
           updatedAt: serverTimestamp(),
@@ -153,13 +169,13 @@ export class FirestoreService {
     try {
       const emailDocId = email.replace(/[@.]/g, '_');
       const userRef = doc(db, COLLECTIONS.EMAIL_USERS, emailDocId);
-      
+
       // Get current user data
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const userData = userSnap.data() as EmailUser;
         const updatedProjectIds = [...(userData.projectIds || []), projectId];
-        
+
         await updateDoc(userRef, {
           projectIds: updatedProjectIds,
           updatedAt: serverTimestamp(),
@@ -172,6 +188,31 @@ export class FirestoreService {
     }
   }
 
+  static async updateEmailUserPreferences(
+    email: string,
+    preferences: {
+      contentOpinion?: string;
+      speakingStyle?: string;
+      guardrails?: string;
+    }
+  ): Promise<void> {
+    try {
+      const emailDocId = email.replace(/[@.]/g, '_');
+      const userRef = doc(db, COLLECTIONS.EMAIL_USERS, emailDocId);
+
+      // Use setDoc with merge to create if doesn't exist
+      await setDoc(userRef, {
+        email,
+        ...preferences,
+        updatedAt: serverTimestamp(),
+        lastActive: serverTimestamp(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error updating user preferences:', error);
+      throw error;
+    }
+  }
+
   // User operations (existing)
   static async createUser(userData: Omit<User, 'createdAt'>): Promise<string> {
     try {
@@ -179,10 +220,10 @@ export class FirestoreService {
         ...userData,
         createdAt: serverTimestamp(),
       };
-      
+
       // Use the user's UID as the document ID
       const userRef = doc(db, COLLECTIONS.USERS, userData.uid);
-      await updateDoc(userRef, userDoc);
+      await setDoc(userRef, userDoc, { merge: true });
       return userData.uid;
     } catch (error) {
       console.error('Error creating user:', error);
