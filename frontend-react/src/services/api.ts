@@ -1,4 +1,4 @@
-import axios from 'axios';
+simport axios from 'axios';
 import {
   UploadResponse,
   ImageVariationsResponse,
@@ -57,6 +57,20 @@ export const apiService = {
   // Process voice from Firebase URL
   async processVoiceFromFirebase(request: ProcessVoiceRequest): Promise<VoiceSignatureResponse> {
     const response = await api.post<VoiceSignatureResponse>('/process-voice-firebase', request);
+    return response.data;
+  },
+
+  // Process image with metadata (new endpoint - uses Firestore)
+  async processImageWithMetadata(
+    user_email: string,
+    image_ids: string[],
+    num_variations: number = 5
+  ): Promise<ImageVariationsResponse> {
+    const response = await api.post<ImageVariationsResponse>('/process-image-with-metadata', {
+      user_email,
+      image_ids,
+      num_variations
+    });
     return response.data;
   },
 

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import os
-from typing import List
+from typing import List, Optional
 import aiofiles
 from dotenv import load_dotenv
 import requests
@@ -20,6 +20,9 @@ import tempfile
 import logging
 import ssl
 from requests.adapters import HTTPAdapter
+import firebase_admin
+from firebase_admin import credentials, firestore, storage
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,6 +41,35 @@ class CustomSSLContextAdapter(HTTPAdapter):
         )
 
 load_dotenv()
+
+# Initialize Firebase Admin SDK
+try:
+    firebase_cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "./serviceAccountKey.json")
+    firebase_bucket = os.getenv("FIREBASE_STORAGE_BUCKET", "tiktok-genie.firebasestorage.app")
+    
+    if os.path.exists(firebase_cred_path):
+        cred = credentials.Certificate(firebase_cred_path)
+        # Explicitly set the project ID from the credentials
+        project_id = cred.project_id
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': firebase_bucket,
+            'projectId': project_id,
+        })
+        db = firestore.client()
+        # Add a check to see if we can access the database
+        logger.info("Attempting to list collections to verify database access...")
+        collections = [col.id for col in db.collections()]
+        logger.info(f"Successfully accessed database. Found collections: {collections}")
+        bucket = storage.bucket()
+        logger.info(f"Firebase Admin SDK initialized successfully with bucket: {firebase_bucket}")
+    else:
+        logger.warning(f"Firebase service account key not found at: {firebase_cred_path}")
+        db = None
+        bucket = None
+except Exception as e:
+    logger.error(f"Failed to initialize Firebase Admin SDK: {e}")
+    db = None
+    bucket = None
 
 app = FastAPI(title="Image & Voice Processing API")
 
@@ -59,6 +91,15 @@ class ProcessVoiceRequest(BaseModel):
     firebase_url: str
     filename: str
     text: str = "Hello, this is a voice signature"
+
+# New models for processing with Firestore metadata
+class ProcessImageWithMetadataRequest(BaseModel):
+    user_email: str
+    image_ids: List[str]  # Support multiple images
+    num_variations: int = 5
+
+class ProcessVoiceWithMetadataRequest(BaseModel):
+    user_email: str
 
 # Set API keys
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
@@ -182,8 +223,8 @@ async def generate_image_variations_gemini(filename: str, num_variations: int = 
         client = genai.Client()
 
         prompt = (
-            """As the Visual Persona Generator, your critical task is to produce five distinct, highly photorealistic, and naturally engaging angle shots of the person from the provided image, explicitly optimized for TikTok Reels. These should embody a User-Generated Content (UGC) aesthetic, prioritizing natural lighting and authentic poses. Each output must meticulously preserve the subject's likeness, facial features, hair, clothing, and overall style from the original input, ensuring seamless visual consistency across all images. Maintain vibrant, natural lighting and consistent color grading.
-Please render these five distinct shots as separate image outputs, each with a vertical aspect ratio of 9:16.
+            """As the Visual Persona Generator, your critical task is to produce five distinct, highly photorealistic, and naturally engaging angle shots of the person from the provided image(s), explicitly optimized for TikTok Reels. These should embody a User-Generated Content (UGC) aesthetic, prioritizing natural lighting and authentic poses. Each output must meticulously preserve the subject's likeness, facial features, hair, clothing, and overall style from the original input, ensuring seamless visual consistency across all images. Maintain vibrant, natural lighting and consistent color grading.
+Please render these five distinct shots as separate image outputs.
 The five TikTok-ready shots should include:
 Face Close-up (Dynamic Close-up - Engaging Gaze): A head-and-shoulders shot with the subject facing slightly forward, featuring a confident, subtly smiling, and directly engaging expression towards the camera. Emphasize crisp focus on the face, illuminated by bright, soft front lighting, against a contemporary, softly blurred background.
 Torso Shot (Confident Stance): A shot from the waist up, with the subject turned 3/4 to the left, actively looking off-camera (as if at something interesting), with arms casually crossed or one hand playfully on the hip. The setting should be a modern, bright, and aesthetically pleasing interior (e.g., minimalist cafe, sunlit home office).
@@ -390,6 +431,266 @@ async def process_voice_firebase(request: ProcessVoiceRequest):
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing voice from Firebase: {str(e)}")
+
+@app.post("/process-image-with-metadata")
+async def process_image_with_metadata(request: ProcessImageWithMetadataRequest):
+    """
+    Complete flow: Query Firestore → Download from Firebase → Process → Upload results → Update metadata
+    """
+    if not db or not bucket:
+        raise HTTPException(status_code=500, detail="Firebase not initialized. Check service account configuration.")
+    
+    try:
+        logger.info(f"Processing {len(request.image_ids)} image(s) for user: {request.user_email}")
+        
+        # Step 1: Query Firestore to get all image metadata
+        images_data = []
+        image_refs = []
+        temp_files = []
+        
+        for image_id in request.image_ids:
+            image_ref = db.collection('images').document(image_id)
+            image_doc = image_ref.get()
+            
+            if not image_doc.exists:
+                raise HTTPException(status_code=404, detail=f"Image metadata not found for ID: {image_id}")
+            
+            image_data = image_doc.to_dict()
+            
+            # Verify user owns this image
+            if image_data.get('userEmail') != request.user_email:
+                raise HTTPException(status_code=403, detail=f"Unauthorized: Image {image_id} does not belong to this user")
+            
+            images_data.append(image_data)
+            image_refs.append(image_ref)
+            logger.info(f"Retrieved image metadata: {image_data.get('fileName')}")
+        
+        # Step 2: Update all images status to processing
+        for image_ref in image_refs:
+            image_ref.update({
+                'processingStatus': 'processing',
+                'updatedAt': firestore.SERVER_TIMESTAMP
+            })
+        
+        # Step 3: Download all images from Firebase Storage
+        pil_images = []
+        for image_data in images_data:
+            download_url = image_data.get('downloadUrl')
+            if not download_url:
+                raise HTTPException(status_code=400, detail=f"No download URL found for {image_data.get('fileName')}")
+            
+            logger.info(f"Downloading image from: {download_url}")
+            image_bytes = await download_file_from_url(download_url)
+            
+            # Save to temporary file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
+            temp_file.write(image_bytes)
+            temp_file.close()
+            temp_files.append(temp_file.name)
+            
+            # Open as PIL Image
+            pil_images.append(Image.open(temp_file.name))
+        
+        try:
+            # Step 4: Process with Gemini API
+            client = genai.Client()
+            
+            prompt = (
+                """As the Visual Persona Generator, your critical task is to produce five distinct, highly photorealistic, and naturally engaging angle shots of the person from the provided image, explicitly optimized for TikTok Reels. These should embody a User-Generated Content (UGC) aesthetic, prioritizing natural lighting and authentic poses. Each output must meticulously preserve the subject's likeness, facial features, hair, clothing, and overall style from the original input, ensuring seamless visual consistency across all images. Maintain vibrant, natural lighting and consistent color grading.
+Please render these five distinct shots as separate image outputs, each with a vertical aspect ratio of 9:16.
+The five TikTok-ready shots should include:
+Face Close-up (Dynamic Close-up - Engaging Gaze): A head-and-shoulders shot with the subject facing slightly forward, featuring a confident, subtly smiling, and directly engaging expression towards the camera. Emphasize crisp focus on the face, illuminated by bright, soft front lighting, against a contemporary, softly blurred background.
+Torso Shot (Confident Stance): A shot from the waist up, with the subject turned 3/4 to the left, actively looking off-camera (as if at something interesting), with arms casually crossed or one hand playfully on the hip. The setting should be a modern, bright, and aesthetically pleasing interior (e.g., minimalist cafe, sunlit home office).
+Full-Body Shot (Urban Exploration): A full-body shot, capturing the subject in a natural, walking or slightly paused pose (e.g., hands casually in pockets, looking over shoulder), facing 3/4 to the right. The background should be a vibrant, well-lit urban street or a picturesque park path during a clear day, conveying a sense of casual exploration.
+Profile Shot (Thoughtful Moment): A clear profile view of the subject looking to the left, as if pondering or observing something, against a simple, uncluttered outdoor background (e.g., sky, subtle foliage) with soft, natural light, creating a serene and reflective mood.
+Over-the-Shoulder Interaction (Digital Engagement): A medium shot from slightly behind the subject's right shoulder, showing them actively and subtly interacting with a tablet or smartphone screen held at eye level. Their face should be partially visible, conveying focused digital engagement in a clean, contemporary interior space (e.g., desk, lounge area).
+Ensure all poses are natural and suitable for video clips."""
+            )
+            
+            logger.info("Generating image variations with Gemini...")
+            response = client.models.generate_content(
+                model="gemini-2.5-flash-image",
+                contents=[prompt] + pil_images
+            )
+            
+            # Step 6: Upload generated images to Firebase Storage and collect metadata
+            variations_metadata = []
+            image_count = 0
+            angles = ["face_closeup", "torso_shot", "fullbody_shot", "profile_shot", "shoulder_interaction"]
+            
+            for candidate in response.candidates:
+                for part in candidate.content.parts:
+                    if part.inline_data:
+                        try:
+                            # Get image bytes
+                            generated_image_bytes = part.inline_data.data
+                            generated_image = Image.open(BytesIO(generated_image_bytes))
+                            
+                            # Create combined ID from all image IDs
+                            combined_id = "_".join(request.image_ids)
+                            
+                            # Create filename for Firebase Storage
+                            angle_name = angles[image_count] if image_count < len(angles) else f"variation_{image_count}"
+                            firebase_filename = f"outputs/{request.user_email.replace('@', '_').replace('.', '_')}/{combined_id}_{angle_name}_{image_count}.jpg"
+                            
+                            # Upload to Firebase Storage
+                            blob = bucket.blob(firebase_filename)
+                            
+                            # Convert PIL Image to bytes
+                            img_byte_arr = BytesIO()
+                            generated_image.save(img_byte_arr, format='JPEG')
+                            img_byte_arr.seek(0)
+                            
+                            blob.upload_from_file(img_byte_arr, content_type='image/jpeg')
+                            blob.make_public()
+                            
+                            firebase_url = blob.public_url
+                            logger.info(f"Uploaded variation {image_count} to Firebase: {firebase_url}")
+                            
+                            # Add to variations metadata
+                            variations_metadata.append({
+                                'id': f"{combined_id}_{image_count}",
+                                'angle': angle_name,
+                                'storagePath': firebase_filename,
+                                'downloadUrl': firebase_url,
+                                'status': 'completed',
+                                'createdAt': datetime.utcnow()
+                            })
+                            
+                            image_count += 1
+                            
+                            if image_count >= request.num_variations:
+                                break
+                                
+                        except Exception as img_e:
+                            logger.error(f"Error processing generated image: {img_e}")
+                    
+                    if image_count >= request.num_variations:
+                        break
+                
+                if image_count >= request.num_variations:
+                    break
+            
+            # Step 7: Update Firestore metadata with results for all images
+            for image_ref in image_refs:
+                image_ref.update({
+                    'processingStatus': 'completed',
+                    'variations': variations_metadata,
+                    'updatedAt': firestore.SERVER_TIMESTAMP
+                })
+            
+            logger.info(f"Successfully processed {image_count} variations")
+            
+            return {
+                "status": "success",
+                "image_ids": request.image_ids,
+                "user_email": request.user_email,
+                "variations_count": image_count,
+                "variations": variations_metadata
+            }
+            
+        finally:
+            # Clean up all temporary files
+            for temp_file_path in temp_files:
+                try:
+                    os.unlink(temp_file_path)
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup temp file {temp_file_path}: {cleanup_error}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in process_image_with_metadata: {str(e)}")
+        
+        # Update Firestore with error status for all images
+        if db:
+            try:
+                for image_id in request.image_ids:
+                    image_ref = db.collection('images').document(image_id)
+                    image_ref.update({
+                        'processingStatus': 'failed',
+                        'processingError': str(e),
+                        'updatedAt': firestore.SERVER_TIMESTAMP
+                    })
+            except Exception as update_error:
+                logger.error(f"Failed to update error status in Firestore: {update_error}")
+        
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+@app.post("/process-voice-with-metadata")
+async def process_voice_with_metadata(request: ProcessVoiceWithMetadataRequest):
+    """
+    Finds a user's voice file, clones it, and saves the clone ID to Firestore.
+    """
+    if not db:
+        raise HTTPException(status_code=500, detail="Firebase not initialized.")
+    if not elevenlabs_client:
+        raise HTTPException(status_code=500, detail="ElevenLabs client not initialized.")
+
+    voice_ref = None
+    try:
+        logger.info(f"Processing voice for user: {request.user_email}")
+
+        # Step 1: Find the user's voice document in Firestore
+        voices_query = db.collection('voices').where('userEmail', '==', request.user_email).limit(1).stream()
+        
+        voice_doc = next(voices_query, None)
+        if not voice_doc:
+            raise HTTPException(status_code=404, detail=f"No voice file found for user: {request.user_email}")
+
+        voice_ref = voice_doc.reference
+        voice_data = voice_doc.to_dict()
+        voice_id = voice_doc.id
+        
+        logger.info(f"Found voice document: {voice_id}")
+
+        # Step 2: Update status to 'processing'
+        voice_ref.update({'processingStatus': 'processing', 'updatedAt': firestore.SERVER_TIMESTAMP})
+
+        # Step 3: Download voice file from Firebase Storage
+        download_url = voice_data.get('downloadUrl')
+        if not download_url:
+            raise HTTPException(status_code=400, detail="No download URL found in metadata.")
+        
+        voice_bytes = await download_file_from_url(download_url)
+
+        # Step 4: Create voice clone with ElevenLabs
+        cloned_voice = elevenlabs_client.voices.ivc.create(
+            name=f"Voice for {voice_id}",
+            files=[BytesIO(voice_bytes)]
+        )
+        logger.info(f"Created voice clone with ID: {cloned_voice.voice_id}")
+
+        # Step 5: Save the clone ID to Firestore
+        voice_ref.update({
+            'processingStatus': 'completed',
+            'voiceSignature': {
+                'cloneId': cloned_voice.voice_id,
+                'status': 'completed',
+                'createdAt': datetime.utcnow()
+            },
+            'updatedAt': firestore.SERVER_TIMESTAMP
+        })
+
+        return {
+            "status": "success",
+            "voice_id": voice_id,
+            "clone_id": cloned_voice.voice_id
+        }
+
+    except Exception as e:
+        logger.error(f"Error in process_voice_with_metadata: {str(e)}")
+        if voice_ref:
+            try:
+                voice_ref.update({
+                    'processingStatus': 'failed',
+                    'processingError': str(e),
+                    'updatedAt': firestore.SERVER_TIMESTAMP
+                })
+            except Exception as update_error:
+                logger.error(f"Failed to update error status in Firestore: {update_error}")
+        raise HTTPException(status_code=500, detail=f"Error processing voice: {str(e)}")
+
 
 @app.get("/health")
 async def health_check():
