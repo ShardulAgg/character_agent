@@ -37,6 +37,7 @@ outputs/
 # Google Cloud
 service-account-key.json
 gcp-credentials.json
+tiktok-genie-firebase-adminsdk-fbsvc-70a078ae28.json
 
 # Node.js dependencies
 node_modules/
