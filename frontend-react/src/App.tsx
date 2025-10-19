@@ -28,27 +28,7 @@ function AppContent() {
     };
   }, []);
 
-  // Show login screen if not authenticated
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full">
-          <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-lg text-center">
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-black rounded-lg flex items-center justify-center">
-                <Sparkles className="h-8 w-8 text-white" />
-              </div>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Cloutfarm</h1>
-            <p className="text-gray-600 mb-8">
-              Create your AI character with photos, voice, and personality
-            </p>
-            <AuthComponent />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Skip authentication - go directly to app
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -112,9 +92,7 @@ function AppContent() {
                 </div>
 
                 {/* Single Profile Form */}
-                {currentUserEmail && (
-                  <ProfileForm userEmail={currentUserEmail} />
-                )}
+                <ProfileForm userEmail={currentUserEmail || 'user@example.com'} />
               </div>
             ) : (
               <div>
