@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Images collection - allow read/write based on userId
+    match /images/{imageId} {
+      allow read, write: if resource.data.userId == request.auth.uid || resource.data.userEmail == request.auth.token.email;
+      allow create: if request.resource.data.userId == request.auth.uid || request.resource.data.userEmail == request.auth.token.email;
+    }
+    
+    // Voices collection - allow read/write based on userId  
+    match /voices/{voiceId} {
+      allow read, write: if resource.data.userId == request.auth.uid || resource.data.userEmail == request.auth.token.email;
+      allow create: if request.resource.data.userId == request.auth.uid || request.resource.data.userEmail == request.auth.token.email;
+    }
+    
+    // Projects collection - allow read/write based on userId
+    match /projects/{projectId} {
+      allow read, write: if resource.data.userId == request.auth.uid || resource.data.userEmail == request.auth.token.email;
+      allow create: if request.resource.data.userId == request.auth.uid || request.resource.data.userEmail == request.auth.token.email;
+    }
+    
+    // Users collection - allow users to read/write their own data
+    match /users/{userId} {
+      allow read, write: if userId == request.auth.uid;
+    }
+  }
+}
